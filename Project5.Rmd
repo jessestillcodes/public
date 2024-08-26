@@ -1,0 +1,78 @@
+---
+title: "Project5"
+author: "Jesse Warshak"
+date: "2024-03-31"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+country <- read.csv("C:/Users/Owner/OneDrive - University of Cincinnati/BANA 4137/country_stat.csv")
+```
+
+```{r}
+ncol(country)
+nrow(country)
+sum(is.na(country))
+```
+## 1) 4797 missing values. This missing data is likely due to some countries not being as diligent when it comes to keeping records. To see how and why data might be missing, it would be a good idea to filter for the NA values on each column and see which countries are missing values at each statistic.
+
+```{r}
+length(unique(country$country))
+length(unique(country$year))
+```
+## 2) there are 185 countries in this dataset and 57 unique years
+
+
+## 3)
+```{r}
+country <- country %>%
+  mutate(GDP_per_capita = gdp/population)
+```
+
+## 4a) How has infant mortality rate changed throughout the years by continent? Are some continents progressing faster?
+
+```{r}
+country %>%
+  ggplot()+
+  geom_area(aes(x = year, y = infant_mortality))+
+  facet_wrap(~continent, ncol = 1)
+```
+## 4a. This visualization shows that the infant immortality rate of today is very low, especially outside of Africa and Asia. However, between those two continents, Asia has improved drastically since 1960, where Africa has improved very slightly relative to the other continents
+
+
+## 4b. In 1965, what was the fertility rate for each country and how does that compare to 2015?
+
+```{r}
+data_1965 <- country %>%
+  filter(year == 1965)
+
+data_2015 <- country %>%
+  filter(year == 2015)
+ggplot() +
+  geom_point(data = data_1965, aes(x = continent, y = fertility, color = "blue")) +
+  geom_point(data = data_2015, aes(x = continent, y = fertility, color = "red")) +
+  labs(title = "Fertility by Continent (1965 (blue) vs. 2015 (red))",
+       x = "Fertility Rate",
+       y = "Continent")+
+  theme(legend.position = "none")
+```
+
+
+##4b. I was surprised to see that for each continent the fertility was higher in 2015 than in 1965
+ 
+
+## 4c. I would like to see how life expectancy and the year correlate in europe
+```{r}
+country %>%
+  filter(continent == "Europe")%>%
+  ggplot()+
+  geom_point(aes(x = year, y = life_expectancy))
+```
+
+## 4c. There does seem to be a correlation. In europe, the life expectancy goes up over time. This isn't that surprising as advances in medicine have led to longer lifespans across the globe. However, there are some interesting details of the visualization. Macedonia, FYR seems to stall in the advances and reach a consistent 65 years for 10+ years. ALso, Russia had a stretch starting in 2000 where they were significantly behind every other European country. These are things that I would have to do more research on to see what causes is, but it does stand out on the visualization.

@@ -1,0 +1,110 @@
+---
+title: "Project8"
+author: "Jesse Warshak"
+date: "2024-03-24"
+output: html_document
+---
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+```
+
+```{r}
+airports <- read.csv("C:/Users/Owner/OneDrive - University of Cincinnati/BANA 4137/airports.csv")
+airlines <- read.csv("C:/Users/Owner/OneDrive - University of Cincinnati/BANA 4137/airlines.csv")
+cvg <- read.csv("C:/Users/Owner/OneDrive - University of Cincinnati/BANA 4137/CVG_Flights.csv")
+```
+
+```{r}
+ncol(cvg)
+nrow(cvg)
+sum(is.na(cvg))
+```
+
+```{r}
+summary(cvg)
+```
+The code above offers basic summary statistics for each variable. Some variables are traditional summary statistics. For example, ELAPSED_TIME, AIR_TIME, and DISTANCE. In these cases, the summary statistics are exactly what they read. However, in other cases like CANCELLED and DIVERTED, the summary statistics have a min of 0, a max of 1. These suggests a binary, yes or no variable where 1 means yes and 0 means no. Therefore, the med of 0 on each means that the answer is most often "no" for each. Additionally, the average will give the percent change of "yes". So 4.9% change of the flight getting CANCELLED and 0.18% chance of the flight getting DIVERTED. Finally, there are some variables where the summary statistics have no real value. Usually these are variables with text values like FLIGHT DATE, AIRLINE, and others.
+
+```{r}
+cvg %>%
+  filter(ARRIVAL_DELAY > 60)%>%
+  ggplot()+
+  geom_point(aes(x = DISTANCE, y = ARRIVAL_DELAY))+
+  geom_smooth(aes(x = DISTANCE, y = ARRIVAL_DELAY), method = "lm", se = FALSE)
+  
+```
+
+```{r}
+# Assuming 'flight_data' is your dataframe and it has been cleaned for NA values
+cvg %>%
+  ggplot(aes(x = DEPARTURE_DELAY, y = DISTANCE, color = AIRLINE)) +
+  geom_point(alpha = 0.5) +  # Set transparency to see overlapping points
+  labs(x = "Departure Delay (minutes)",
+       y = "Flight Distance (miles)",
+       color = "Airline") +
+  theme_minimal() +
+  ggtitle("Departure vs Arrival Delay by Airline")
+
+```
+
+```{r}
+airlinemerged <- cvg %>%
+  left_join(airlines, by = "AIRLINE")
+
+fullmerge <- airlinemerged %>%
+  left_join(airports, by = "IATA_CODE")
+```
+
+TIME SERIES: how do departure and arrival delays vary over time?
+```{r}
+
+fullmerge <- fullmerge %>%
+  mutate(FLIGHT_DATE = as.Date(FLIGHT_DATE, format="%m/%d/%Y")) %>%
+  arrange(FLIGHT_DATE)
+
+ggplot(fullmerge, aes(x = FLIGHT_DATE)) +
+  geom_line(aes(y = DEPARTURE_DELAY, color = "Departure Delay")) +
+  geom_line(aes(y = ARRIVAL_DELAY, color = "Arrival Delay")) +
+  labs(x = "Date", y = "Delay (minutes)", title = "Time Series of Flight Delays") +
+  scale_color_manual(values = c("Departure Delay" = "blue", "Arrival Delay" = "red")) +
+  theme_minimal()
+```
+
+SPATIAL ANALYSIS: what are the most common destinations from CVG? How do the distance to these destinations impact delays?
+```{r}
+fullmerge <- fullmerge %>%
+  left_join(airports, by = c("DESTINATION_AIRPORT" = "IATA_CODE"))
+
+ggplot(fullmerge, aes(x = LONGITUDE.y, y = LATITUDE.y, size = DISTANCE, color = ARRIVAL_DELAY)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "Longitude", y = "Latitude", size = "Distance", color = "Arrival Delay") +
+  theme_minimal() +
+  ggtitle("Flight Destinations and Delays from CVG")
+```
+
+
+How do different airlines compare when it comes to average delay?
+```{r}
+fullmerge %>%
+  group_by(AIRLINE) %>%
+  summarize(Average_Delay = mean(ARRIVAL_DELAY, na.rm = TRUE)) %>%
+  ggplot(aes(x = reorder(AIRLINE, Average_Delay), y = Average_Delay, fill = AIRLINE)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Airline", y = "Average Arrival Delay (minutes)", title = "Average Arrival Delay by Airline") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+What causes are responsible for the most minutes of delay?
+```{r}
+fullmerge %>%
+  gather(key = "Delay_Type", value = "Delay_Duration", AIR_SYSTEM_DELAY:WEATHER_DELAY) %>%
+  group_by(Delay_Type) %>%
+  summarize(Total_Delay = sum(Delay_Duration, na.rm = TRUE)) %>%
+  ggplot(aes(x = Delay_Type, y = Total_Delay, fill = Delay_Type)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Type of Delay", y = "Total Delay Duration (minutes)", title = "Total Delay Duration by Delay Type") +
+  theme_minimal()
+```

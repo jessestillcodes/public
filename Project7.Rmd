@@ -1,0 +1,110 @@
+---
+title: "Project7Warshak"
+author: "Jesse Warshak"
+date: "2024-03-17"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+
+```{r}
+collegedata <- read.csv("college.csv")
+numvar <- ncol(collegedata)
+numobv <- nrow(collegedata)
+missingv <- any(is.na(collegedata))
+
+numvar
+numobv
+missingv
+```
+
+```{r}
+collegedata %>%
+  group_by(state)%>%
+  ggplot()+
+  geom_bar(aes(x = admission_rate, fill = state))
+```
+
+
+```{r}
+collegedata %>%
+  ggplot()+
+  geom_point(aes(x = median_debt, y = loan_default_rate))+
+  geom_smooth(aes(x = median_debt, y = loan_default_rate), method = "gam")
+```
+
+```{r}
+ggplot(collegedata, aes(x = median_debt, y = loan_default_rate, size = undergrads)) +
+  geom_point(alpha = 0.7) + 
+
+geom_smooth(method = "loess", formula = y ~ x, aes(weight = undergrads), se = FALSE)
+```
+
+
+```{r}
+ggplot(collegedata, aes(x = undergrads, fill = highest_degree)) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Number of Undergraduates", y = "Density",
+       title = "Distribution of Undergraduates by Highest Degree Offering") +
+  scale_fill_discrete(name = "Highest Degree")
+```
+The number of undergraduates increases when the highest degree level increases from associate to bachelor to graduate. the number of undergraduates is very low when the highest level is associates.
+
+```{r}
+collegedata$log_num_undergrads <- log10(collegedata$undergrads)
+ggplot(collegedata, aes(x = log_num_undergrads, fill = highest_degree)) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Log10(Number of Undergraduates)", y = "Density",
+       title = "Distribution of Log-Transformed Undergraduates by Highest Degree Offering") +
+  scale_fill_discrete(name = "Highest Degree")
+```
+I believe this shows the date better.
+
+
+```{r}
+collegedata$log_num_undergrads <- log10(collegedata$undergrads)
+ggplot(collegedata, aes(x = log_num_undergrads, fill = highest_degree)) +
+  geom_density(alpha = 0.5, position = "stack") +
+  labs(x = "Log10(Number of Undergraduates)", y = "Density",
+       title = "Composition of Undergraduates by Highest Degree Offering") +
+  scale_fill_discrete(name = "Highest Degree")
+```
+graduate and bachelor seem to be the highest proportion for highest degree type. graduate being the highest.
+```{r}
+degree_counts <- table(collegedata$highest_degree)
+
+barplot(degree_counts, 
+        main = "Number of Schools by Highest Degree Type",
+        xlab = "Highest Degree Type",
+        ylab = "Number of Schools",
+        col = "blue", 
+        border = "black",
+        ylim = c(0, max(degree_counts) + 10)) 
+
+text(x = barplot(degree_counts), y = degree_counts + 2, labels = degree_counts, pos = 3)
+```
+
+```{r}
+ggplot(collegedata, aes(x = sat_avg, y = admission_rate, color = control)) +
+  geom_point(alpha = 0.7) +
+  labs(x = "Average SAT Score", y = "Admission Rate",
+       title = "Association between Average SAT Score and Admission Rate") +
+  scale_color_manual(values = c("public" = "blue", "private" = "orange"))
+```
+
+1. How does the gender impact the tuition?
+```{r}
+collegedata%>%
+  ggplot()+
+  geom_density_ridges_gradient(aes(x = tuition, y = gender))
+```
+
+2. Is the faculty salary higher in private or public schools?
+```{r}
+collegedata%>%
+  ggplot()+
+  geom_density_ridges_gradient(aes(x = faculty_salary_avg, y = control))
+```

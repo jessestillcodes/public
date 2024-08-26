@@ -1,0 +1,109 @@
+---
+title: "Project9"
+author: "Jesse Warshak"
+date: "2024-04-15"
+output: html_document
+---
+This data set is for all of womens basketball. I narrowed down the data to really focus on the play by play data for the championship game in womens college basketball. In this dataset, each row represents an "event" in a game. It's a play or possession. This could be a jumpball, a turnover, a made shot, a missed shot, a foul, or any other possible basketball event. Each column represents variables that describe the event. Some of these include the play type, the athlete id, the x and y coordinates of the play, and other useful information.
+
+
+Question 1: Given that Iowa and South Carolina play very different styles, does this show in their shot locations? How does the shot chart differ for South Carolina and Iowa, and specifically, how does Caitlin Clark's shots differ from everyone else on a shot chart?
+
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+
+pbp <- wehoop::espn_wbb_pbp(401637613)
+
+clark_shots <- pbp %>%
+  filter(shooting_play == TRUE, athlete_id_1 == 4433403)
+
+sc_shots <- pbp %>%
+  filter(shooting_play == TRUE, team_id == 2579, athlete_id_1 != 4433403)
+
+iowa_shots <- pbp %>%
+  filter(shooting_play == TRUE, team_id == 2294, athlete_id_1 != 4433403)
+
+all_shots <- bind_rows(
+  mutate(clark_shots, player = "Caitlin Clark"),
+  mutate(sc_shots, player = "South Carolina"),
+  mutate(iowa_shots, player = "Iowa")
+)
+
+ggplot(all_shots, aes(x = coordinate_x_raw, y = coordinate_y_raw, fill = player)) +
+  geom_bin2d(bins = 100) + 
+  scale_fill_manual(values = c("Caitlin Clark" = "skyblue", "South Carolina" = "red", "Iowa" = "yellow4")) +
+  theme_minimal() +
+  labs(fill = "Player", title = "Shot Heat Map", x = "Court X Coordinate", y = "Court Y Coordinate") +
+  coord_fixed()
+```
+
+Here it easy to see why South Carolina won. They took more shots on all areas of the court. They took mid range shots, they took shots near the rim, and they took threes. They had a balanced offensive attack. On the other hand, Iowa had a different style of play. They only took shots at the rim and 3 point shots. Their offense was predictable. Finally, a few of Caitlin Clark's shots stand out. She takes (and often makes) shots that no one else would attempt. She had many of the longest attempted shots in the game, including the 4 longest. This is a very risky style of play. Often it is the easiest way to get open shots AND requires the defense to play tighter and it creates more space on the floor, but when the deep shots aren't falling, it can be wasted possessions.
+
+
+Question 2: How did the score change throughout the game? Did Iowa ever have a chance or did South Carolina hold a convincing lead the entire game?
+
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+
+long_data <- pbp %>%
+  select(sequence_number, away_score, home_score, clock_display_value, period_number, team_id) %>%
+  pivot_longer(cols = c(away_score, home_score), names_to = "team", values_to = "score") %>%
+  mutate(team = ifelse(team == "away_score", "Away", "Home"))
+
+long_data$clock_minutes <- as.numeric(strptime(long_data$clock_display_value, format='%M:%S')) %/% 60
+
+period_length_min <- as.numeric(strptime('10:00', format='%M:%S')) %/% 60
+long_data$time_remaining_min <- period_length_min - long_data$clock_minutes
+
+ggplot(long_data, aes(x = time_remaining_min, y = score, group = team, color = team)) +
+  geom_line() +
+  facet_wrap(~period_number, ncol = 4) +
+  scale_color_manual(values = c("Home" = "red", "Away" = "yellow4")) +
+  labs(title = "Score Changes Throughout the Game",
+       x = "Time Into Quarter (Minutes)",
+       y = "Score",
+       color = "Team") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+This shows that Iowa (the Away team) started off hot and held the lead for the entirety of the first quarter. However, the 2nd quarter was very competitive with many lead changes.By the end of it, South Carolina took the lead and they didn't give it up for the rest of the game. This shows that Iowa lost their fire in the 2nd and after that they were just trying to keep up, but had no luck.
+
+Question 3: 
+how did each team compare in total fouls by quarter. Was it a fairly, or evenly called game? Were the refs light on the whistle late to allow the teams to play more physical as they compete for a championship?
+
+
+
+```{r}
+
+personal_fouls <- pbp %>%
+  filter(type_text == "PersonalFoul") %>%
+  group_by(team_id, period_number) %>%
+  summarise(foul_count = n()) %>%
+  ungroup() %>%
+  mutate(team = if_else(team_id == 2294, "Iowa", "South Carolina"))
+
+ggplot(personal_fouls, aes(x = factor(period_number), y = foul_count, fill = team)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_fill_manual(values = c("Iowa" = "yellow3", "South Carolina" = "red")) +
+  labs(title = "Personal Fouls by Team and Quarter",
+       x = "Quarter",
+       y = "Number of Personal Fouls",
+       fill = "Team") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+```
+
+
+
+Based on the visualization I would say the game was called relatively fair. I don't think any team was favored necessarily. Based on playstyle, Iowa gets more fouls called their way. And even though the end seems as though Iowa was called for an unusual amount of fouls, this would be due to late game fouling to keep the game alive. The only anomoly is the lack of fouls in the 3rd quarter. At this point in the game, the teams were dead even and the pace was high, there were less calls because the refs wanted to stay out of the game.
